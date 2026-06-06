@@ -3,13 +3,19 @@ info:
   # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: ORACLEX MAIL ENGINE — Transactional Email Infrastructure API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: email
+    description: Email send and log operations
+  - name: smtp
+    description: SMTP pool management
+  - name: stats
+    description: Delivery statistics
 paths:
   /healthz:
     get:
@@ -24,7 +30,171 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /v1/email/send:
+    post:
+      operationId: sendEmail
+      tags: [email]
+      summary: Queue an email for delivery
+      description: Validates API key, queues the email for async delivery, and returns a message ID immediately.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SendEmailBody"
+      responses:
+        "202":
+          description: Accepted — email queued for delivery
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SendEmailResponse"
+        "400":
+          description: Invalid request payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized — invalid or missing API key
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "429":
+          description: Rate limit exceeded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/email/logs:
+    get:
+      operationId: listEmailLogs
+      tags: [email]
+      summary: List email delivery logs
+      description: Returns paginated email logs for the authenticated developer.
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: status
+          in: query
+          required: false
+          schema:
+            type: string
+            enum: [queued, sent, failed]
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+        - name: offset
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 0
+      responses:
+        "200":
+          description: List of email logs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListEmailLogsResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/email/logs/{id}:
+    get:
+      operationId: getEmailLog
+      tags: [email]
+      summary: Get a single email log by ID
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Email log detail
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/EmailLog"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Log not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/smtp/pool:
+    get:
+      operationId: getSmtpPool
+      tags: [smtp]
+      summary: Get SMTP pool node status
+      description: Returns the current status of all Gmail relay nodes.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: SMTP pool status
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SmtpPoolResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/stats:
+    get:
+      operationId: getStats
+      tags: [stats]
+      summary: Get delivery statistics
+      description: Returns aggregate delivery stats for the authenticated developer.
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Delivery statistics
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/StatsResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+
   schemas:
     HealthStatus:
       type: object
@@ -34,3 +204,152 @@ components:
       required:
         - status
 
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+      required:
+        - error
+
+    SendEmailBody:
+      type: object
+      properties:
+        to:
+          type: string
+          description: Recipient email address
+        template:
+          type: string
+          enum: [verification, otp, password-reset, magic-link, security-alert, welcome-email]
+          description: Built-in template name
+        senderName:
+          type: string
+          description: Display name shown to recipient
+        data:
+          type: object
+          additionalProperties: true
+          description: Template variable substitutions
+      required:
+        - to
+        - template
+        - senderName
+
+    SendEmailResponse:
+      type: object
+      properties:
+        messageId:
+          type: string
+          description: UUID of the queued message
+        status:
+          type: string
+          enum: [queued]
+      required:
+        - messageId
+        - status
+
+    EmailLog:
+      type: object
+      properties:
+        id:
+          type: string
+        developerId:
+          type: string
+        recipient:
+          type: string
+        templateUsed:
+          type: string
+        status:
+          type: string
+          enum: [queued, sent, failed]
+        errorMessage:
+          type: string
+          nullable: true
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - developerId
+        - recipient
+        - templateUsed
+        - status
+        - createdAt
+
+    ListEmailLogsResponse:
+      type: object
+      properties:
+        logs:
+          type: array
+          items:
+            $ref: "#/components/schemas/EmailLog"
+        total:
+          type: integer
+        limit:
+          type: integer
+        offset:
+          type: integer
+      required:
+        - logs
+        - total
+        - limit
+        - offset
+
+    SmtpNode:
+      type: object
+      properties:
+        id:
+          type: integer
+        gmailUsername:
+          type: string
+        dailySentCount:
+          type: integer
+        maxDailyLimit:
+          type: integer
+        lastUsedTimestamp:
+          type: integer
+        status:
+          type: string
+          enum: [active, locked, rate_limited]
+      required:
+        - id
+        - gmailUsername
+        - dailySentCount
+        - maxDailyLimit
+        - lastUsedTimestamp
+        - status
+
+    SmtpPoolResponse:
+      type: object
+      properties:
+        nodes:
+          type: array
+          items:
+            $ref: "#/components/schemas/SmtpNode"
+        activeCount:
+          type: integer
+        totalCapacityRemaining:
+          type: integer
+      required:
+        - nodes
+        - activeCount
+        - totalCapacityRemaining
+
+    StatsResponse:
+      type: object
+      properties:
+        total:
+          type: integer
+        sent:
+          type: integer
+        failed:
+          type: integer
+        queued:
+          type: integer
+        successRate:
+          type: number
+      required:
+        - total
+        - sent
+        - failed
+        - queued
+        - successRate

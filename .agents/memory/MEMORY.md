@@ -1,0 +1,1 @@
+- [api-zod export conflict](api-zod-conflict.md) — generated types and Zod schemas share names; only export from generated/api to avoid TS2308.

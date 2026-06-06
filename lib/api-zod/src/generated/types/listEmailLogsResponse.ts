@@ -5,7 +5,11 @@
  * ORACLEX MAIL ENGINE — Transactional Email Infrastructure API
  * OpenAPI spec version: 0.1.0
  */
+import type { EmailLog } from './emailLog';
 
-export interface HealthStatus {
-  status: string;
+export interface ListEmailLogsResponse {
+  logs: EmailLog[];
+  total: number;
+  limit: number;
+  offset: number;
 }

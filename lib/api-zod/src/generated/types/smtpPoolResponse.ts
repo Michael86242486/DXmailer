@@ -5,7 +5,10 @@
  * ORACLEX MAIL ENGINE — Transactional Email Infrastructure API
  * OpenAPI spec version: 0.1.0
  */
+import type { SmtpNode } from './smtpNode';
 
-export interface HealthStatus {
-  status: string;
+export interface SmtpPoolResponse {
+  nodes: SmtpNode[];
+  activeCount: number;
+  totalCapacityRemaining: number;
 }

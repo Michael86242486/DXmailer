@@ -6,6 +6,10 @@
  * OpenAPI spec version: 0.1.0
  */
 
-export interface HealthStatus {
-  status: string;
+export interface StatsResponse {
+  total: number;
+  sent: number;
+  failed: number;
+  queued: number;
+  successRate: number;
 }

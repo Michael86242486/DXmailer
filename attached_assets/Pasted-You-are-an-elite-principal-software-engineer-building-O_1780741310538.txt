@@ -1,0 +1,39 @@
+You are an elite, principal software engineer building "ORACLEX MAIL ENGINE" (Phase 1: Core Backend & Delivery Infrastructure). 
+
+This is a production-grade, developer-first transactional email infrastructure platform designed to scale. The platform must be fully deployable on Cloudflare's ecosystem using TypeScript, Cloudflare Workers, Cloudflare D1 (SQL database), Cloudflare Queues, and Cloudflare Cron Triggers.
+
+### ARCHITECTURAL SCOPE (PHASE 1 ONLY)
+Focus 100% on the backend API gateway, database migrations, queue consumer, and delivery loops. Do not build the React frontend dashboard UI yet—focus entirely on a bulletproof API, template engine, and rotation network.
+
+### 1. DATABASE SCHEMA & SEED DATA (CLOUDFLARE D1)
+Generate a SQLite schema and an automatic migration/seed script containing these exact tables:
+- `developers`: id (UUID), api_key (TEXT), company_name (TEXT), rate_limit_per_min (INT), created_at.
+- `smtp_pool`: id (INTEGER PK), gmail_username (TEXT), app_password (TEXT), daily_sent_count (INT DEFAULT 0), max_daily_limit (INT DEFAULT 500), last_used_timestamp (BIGINT DEFAULT 0), status (TEXT: 'active', 'locked', 'rate_limited').
+- `email_logs`: id (UUID), developer_id (UUID), recipient (TEXT), template_used (TEXT), status (TEXT: 'queued', 'sent', 'failed'), error_message (TEXT), created_at (TIMESTAMP).
+
+MANDATORY SEED DATA: Include these entries in your setup/migration script:
+- INSERT INTO developers (id, api_key, company_name, rate_limit_per_min) VALUES ('dev-test-uuid', 'oraclex_live_test_key_xyz123', 'Sandbox Dev Inc', 60);
+- INSERT INTO smtp_pool (gmail_username, app_password, daily_sent_count, max_daily_limit, last_used_timestamp, status) VALUES ('oraclex.relay01@gmail.com', 'jgffyxztpedbbqxp', 0, 500, 0, 'active');
+- INSERT INTO smtp_pool (gmail_username, app_password, daily_sent_count, max_daily_limit, last_used_timestamp, status) VALUES ('oraclex.relay02@gmail.com', 'fhlnqzrghwqfwzgb', 0, 500, 0, 'active');
+
+### 2. API GATEWAY ROUTING
+Expose a developer-facing REST API using a lightweight routing engine (like Hono or itty-router) under the `/v1` prefix:
+- `POST /v1/email/send`: Validates the caller via 'Authorization: Bearer <API_KEY>'. Accepts a JSON payload: `{ "to": "user@example.com", "template": "verification", "senderName": "MySaaS", "data": { "code": "1234" } }`.
+- NEVER send emails synchronously during the API request. Write a 'queued' log to `email_logs`, push the payload to a Cloudflare Queue, and instantly return HTTP 202 Accepted with `{ "messageId": "UUID" }`.
+
+### 3. ASYNCHRONOUS GMAIL ROTATION LOOP (CRITICAL)
+Build a Cloudflare Queue consumer service to process queued messages. The loop must execute as follows:
+- **Atomic Selection Query:** Run a D1 query to fetch the absolute most optimal active Gmail node: `SELECT * FROM smtp_pool WHERE status = 'active' AND daily_sent_count < max_daily_limit ORDER BY last_used_timestamp ASC LIMIT 1`. If no nodes are available, throw a hard capacity error.
+- **Template Engine:** Include built-in HTML layouts (verification, otp, password-reset, magic-link, security-alert, welcome-email). Compile the layout using string interpolation or basic mustache/handlebars syntax to replace `{{variable}}` keys with values provided in the `data` object.
+- **Outbound TCP Delivery:** Establish a secure connection to `://gmail.com` (STARTTLS) using the `worker-mailer` library and the selected credentials. Mask the headers cleanly: `From: "${senderName} via ORACLEX" <pooled_gmail@gmail.com>`.
+- **State & Error Handling:**
+  - On Success: Increment `daily_sent_count` by 1, update `last_used_timestamp` to `Date.now()`, and mark log status as 'sent'.
+  - On SMTP Failure/Quota Blocks: Change that node's status to 'rate_limited' or 'locked' in the database and re-throw the error to force the Cloudflare Queue to automatically retry the email using a different healthy account.
+
+### 4. MAINTENANCE CRON TRIGGER
+Implement a scheduled worker script (`scheduled` event handler) configured via wrangler to execute at exactly 00:00 UTC daily. It must reset capacity metrics: `UPDATE smtp_pool SET daily_sent_count = 0 WHERE status != 'locked';`.
+
+### 5. PROJECT BUILD REQUIREMENTS
+- Ensure the TypeScript code compiles with strict type safety.
+- Modularize the design (`/src/index.ts`, `/src/db/`, `/src/services/`, `/src/templates/`).
+- Include a comprehensive README.md file demonstrating local D1 environment setups, variables, and example `curl` payloads utilizing the seed test key `oraclex_live_test_key_xyz123`.

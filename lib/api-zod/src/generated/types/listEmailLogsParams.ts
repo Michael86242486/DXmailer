@@ -5,7 +5,10 @@
  * ORACLEX MAIL ENGINE — Transactional Email Infrastructure API
  * OpenAPI spec version: 0.1.0
  */
+import type { ListEmailLogsStatus } from './listEmailLogsStatus';
 
-export interface HealthStatus {
-  status: string;
-}
+export type ListEmailLogsParams = {
+status?: ListEmailLogsStatus;
+limit?: number;
+offset?: number;
+};
