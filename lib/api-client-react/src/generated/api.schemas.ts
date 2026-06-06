@@ -13,13 +13,10 @@ export interface ErrorResponse {
   error: string;
 }
 
-/**
- * Built-in template name
- */
-export type SendEmailBodyTemplate = typeof SendEmailBodyTemplate[keyof typeof SendEmailBodyTemplate];
+export type EmailInputTemplate = typeof EmailInputTemplate[keyof typeof EmailInputTemplate];
 
 
-export const SendEmailBodyTemplate = {
+export const EmailInputTemplate = {
   verification: 'verification',
   otp: 'otp',
   'password-reset': 'password-reset',
@@ -28,20 +25,13 @@ export const SendEmailBodyTemplate = {
   'welcome-email': 'welcome-email',
 } as const;
 
-/**
- * Template variable substitutions
- */
-export type SendEmailBodyData = { [key: string]: unknown };
+export type EmailInputData = { [key: string]: unknown };
 
-export interface SendEmailBody {
-  /** Recipient email address */
+export interface EmailInput {
   to: string;
-  /** Built-in template name */
-  template: SendEmailBodyTemplate;
-  /** Display name shown to recipient */
+  template: EmailInputTemplate;
   senderName: string;
-  /** Template variable substitutions */
-  data?: SendEmailBodyData;
+  data?: EmailInputData;
 }
 
 export type SendEmailResponseStatus = typeof SendEmailResponseStatus[keyof typeof SendEmailResponseStatus];
@@ -52,7 +42,6 @@ export const SendEmailResponseStatus = {
 } as const;
 
 export interface SendEmailResponse {
-  /** UUID of the queued message */
   messageId: string;
   status: SendEmailResponseStatus;
 }
@@ -72,6 +61,7 @@ export interface EmailLog {
   recipient: string;
   templateUsed: string;
   status: EmailLogStatus;
+  /** @nullable */
   errorMessage?: string | null;
   createdAt: string;
 }
@@ -113,6 +103,57 @@ export interface StatsResponse {
   failed: number;
   queued: number;
   successRate: number;
+}
+
+export interface Developer {
+  id: string;
+  apiKey: string;
+  companyName: string;
+  rateLimitPerMin: number;
+  createdAt: string;
+}
+
+export interface DeveloperInput {
+  companyName: string;
+  rateLimitPerMin?: number;
+}
+
+export interface DeveloperUpdate {
+  companyName?: string;
+  rateLimitPerMin?: number;
+}
+
+export interface Webhook {
+  id: string;
+  developerId: string;
+  url: string;
+  events: string[];
+  secret: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export type WebhookInputEventsItem = typeof WebhookInputEventsItem[keyof typeof WebhookInputEventsItem];
+
+
+export const WebhookInputEventsItem = {
+  emailsent: 'email.sent',
+  emailfailed: 'email.failed',
+  emailqueued: 'email.queued',
+} as const;
+
+export interface WebhookInput {
+  url: string;
+  events: WebhookInputEventsItem[];
+}
+
+export interface ListWebhooksResponse {
+  webhooks: Webhook[];
+}
+
+export interface WebhookTestResponse {
+  dispatched: boolean;
+  message: string;
 }
 
 export type ListEmailLogsParams = {

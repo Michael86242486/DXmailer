@@ -17,7 +17,7 @@ export const TEMPLATES: Record<TemplateName, { subject: string; html: string }> 
   .brand { font-size: 13px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #6366f1; margin-bottom: 32px; }
   h1 { font-size: 24px; font-weight: 700; color: #111; margin: 0 0 12px; }
   p { color: #555; line-height: 1.6; margin: 0 0 24px; font-size: 15px; }
-  .code { background: #f4f4f5; border-radius: 8px; font-size: 32px; font-weight: 700; letter-spacing: 0.12em; color: #111; text-align: center; padding: 20px; margin: 24px 0; font-family: monospace; }
+  .code { background: #f4f4f5; border-radius: 8px; font-size: 32px; font-weight: 700; letter-spacing: 0.12em; color: #111; text-align: center; padding: 20px 12px; margin: 24px 0; font-family: monospace; display: flex; justify-content: center; align-items: center; flex-wrap: nowrap; min-width: 0; word-break: keep-all; white-space: nowrap; overflow-x: auto; }
   .footer { font-size: 12px; color: #999; margin-top: 32px; text-align: center; }
 </style></head>
 <body>

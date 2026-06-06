@@ -51,6 +51,7 @@ router.post("/send", requireApiKey, async (req, res): Promise<void> => {
   // Push to async queue — do NOT await, returns immediately (HTTP 202)
   enqueue({
     logId: messageId,
+    developerId: developer.id,
     to,
     template: template as TemplateName,
     senderName,

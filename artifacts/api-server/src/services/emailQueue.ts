@@ -4,9 +4,11 @@ import { eq } from "drizzle-orm";
 import { logger } from "../lib/logger";
 import { renderTemplate, type TemplateName } from "./templateEngine";
 import { sendViaRotatingPool } from "./smtpService";
+import { dispatchWebhooks } from "./webhookService";
 
 export interface QueuedEmail {
   logId: string;
+  developerId: string;
   to: string;
   template: TemplateName;
   senderName: string;
@@ -59,6 +61,13 @@ async function processNext(): Promise<void> {
       .where(eq(emailLogsTable.id, job.logId));
 
     logger.info({ logId: job.logId }, "Email marked as sent");
+
+    // Dispatch webhook — fire and forget
+    void dispatchWebhooks(job.developerId, "email.sent", {
+      messageId: job.logId,
+      recipient: job.to,
+      template: job.template,
+    });
   } catch (err) {
     const error = err as Error;
     logger.error({ logId: job.logId, error: error.message, retry: job.retryCount }, "Email delivery failed");
@@ -80,6 +89,14 @@ async function processNext(): Promise<void> {
         .where(eq(emailLogsTable.id, job.logId));
 
       logger.error({ logId: job.logId }, "Email permanently failed after max retries");
+
+      // Dispatch failure webhook — fire and forget
+      void dispatchWebhooks(job.developerId, "email.failed", {
+        messageId: job.logId,
+        recipient: job.to,
+        template: job.template,
+        error: error.message,
+      });
     }
   }
 

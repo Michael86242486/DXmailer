@@ -16,13 +16,16 @@ tags:
     description: SMTP pool management
   - name: stats
     description: Delivery statistics
+  - name: developers
+    description: Developer account management
+  - name: webhooks
+    description: Webhook endpoint management
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -36,7 +39,6 @@ paths:
       operationId: sendEmail
       tags: [email]
       summary: Queue an email for delivery
-      description: Validates API key, queues the email for async delivery, and returns a message ID immediately.
       security:
         - bearerAuth: []
       requestBody:
@@ -44,28 +46,22 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/SendEmailBody"
+              $ref: "#/components/schemas/EmailInput"
       responses:
         "202":
-          description: Accepted — email queued for delivery
+          description: Accepted
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/SendEmailResponse"
         "400":
-          description: Invalid request payload
+          description: Invalid payload
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "401":
-          description: Unauthorized — invalid or missing API key
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "429":
-          description: Rate limit exceeded
+          description: Unauthorized
           content:
             application/json:
               schema:
@@ -76,7 +72,6 @@ paths:
       operationId: listEmailLogs
       tags: [email]
       summary: List email delivery logs
-      description: Returns paginated email logs for the authenticated developer.
       security:
         - bearerAuth: []
       parameters:
@@ -100,7 +95,7 @@ paths:
             default: 0
       responses:
         "200":
-          description: List of email logs
+          description: Email logs
           content:
             application/json:
               schema:
@@ -116,7 +111,7 @@ paths:
     get:
       operationId: getEmailLog
       tags: [email]
-      summary: Get a single email log by ID
+      summary: Get a single email log
       security:
         - bearerAuth: []
       parameters:
@@ -127,7 +122,7 @@ paths:
             type: string
       responses:
         "200":
-          description: Email log detail
+          description: Email log
           content:
             application/json:
               schema:
@@ -139,7 +134,7 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "404":
-          description: Log not found
+          description: Not found
           content:
             application/json:
               schema:
@@ -150,12 +145,11 @@ paths:
       operationId: getSmtpPool
       tags: [smtp]
       summary: Get SMTP pool node status
-      description: Returns the current status of all Gmail relay nodes.
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: SMTP pool status
+          description: SMTP pool
           content:
             application/json:
               schema:
@@ -172,18 +166,238 @@ paths:
       operationId: getStats
       tags: [stats]
       summary: Get delivery statistics
-      description: Returns aggregate delivery stats for the authenticated developer.
       security:
         - bearerAuth: []
       responses:
         "200":
-          description: Delivery statistics
+          description: Stats
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/StatsResponse"
         "401":
           description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/developers:
+    post:
+      operationId: createDeveloper
+      tags: [developers]
+      summary: Provision a new developer account
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeveloperInput"
+      responses:
+        "201":
+          description: Developer created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Developer"
+        "400":
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/developers/me:
+    get:
+      operationId: getDeveloperMe
+      tags: [developers]
+      summary: Get current developer profile
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Developer profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Developer"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    patch:
+      operationId: updateDeveloperMe
+      tags: [developers]
+      summary: Update developer profile
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeveloperUpdate"
+      responses:
+        "200":
+          description: Updated developer
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Developer"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    delete:
+      operationId: deleteDeveloperMe
+      tags: [developers]
+      summary: Delete developer account
+      security:
+        - bearerAuth: []
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/developers/rotate-key:
+    post:
+      operationId: rotateDeveloperKey
+      tags: [developers]
+      summary: Rotate the developer API key
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: New key issued
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Developer"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/webhooks:
+    get:
+      operationId: listWebhooks
+      tags: [webhooks]
+      summary: List registered webhooks
+      security:
+        - bearerAuth: []
+      responses:
+        "200":
+          description: Webhook list
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ListWebhooksResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+    post:
+      operationId: createWebhook
+      tags: [webhooks]
+      summary: Register a new webhook endpoint
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/WebhookInput"
+      responses:
+        "201":
+          description: Webhook created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Webhook"
+        "400":
+          description: Invalid payload
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/webhooks/{id}:
+    delete:
+      operationId: deleteWebhook
+      tags: [webhooks]
+      summary: Delete a webhook endpoint
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: Deleted
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+  /v1/webhooks/{id}/test:
+    post:
+      operationId: testWebhook
+      tags: [webhooks]
+      summary: Send a test event to a webhook
+      security:
+        - bearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Test dispatched
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/WebhookTestResponse"
+        "401":
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Not found
           content:
             application/json:
               schema:
@@ -201,51 +415,39 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
     ErrorResponse:
       type: object
       properties:
         error:
           type: string
-      required:
-        - error
+      required: [error]
 
-    SendEmailBody:
+    EmailInput:
       type: object
       properties:
         to:
           type: string
-          description: Recipient email address
         template:
           type: string
           enum: [verification, otp, password-reset, magic-link, security-alert, welcome-email]
-          description: Built-in template name
         senderName:
           type: string
-          description: Display name shown to recipient
         data:
           type: object
           additionalProperties: true
-          description: Template variable substitutions
-      required:
-        - to
-        - template
-        - senderName
+      required: [to, template, senderName]
 
     SendEmailResponse:
       type: object
       properties:
         messageId:
           type: string
-          description: UUID of the queued message
         status:
           type: string
           enum: [queued]
-      required:
-        - messageId
-        - status
+      required: [messageId, status]
 
     EmailLog:
       type: object
@@ -262,18 +464,11 @@ components:
           type: string
           enum: [queued, sent, failed]
         errorMessage:
-          type: string
-          nullable: true
+          type: ["string", "null"]
         createdAt:
           type: string
           format: date-time
-      required:
-        - id
-        - developerId
-        - recipient
-        - templateUsed
-        - status
-        - createdAt
+      required: [id, developerId, recipient, templateUsed, status, createdAt]
 
     ListEmailLogsResponse:
       type: object
@@ -288,11 +483,7 @@ components:
           type: integer
         offset:
           type: integer
-      required:
-        - logs
-        - total
-        - limit
-        - offset
+      required: [logs, total, limit, offset]
 
     SmtpNode:
       type: object
@@ -310,13 +501,7 @@ components:
         status:
           type: string
           enum: [active, locked, rate_limited]
-      required:
-        - id
-        - gmailUsername
-        - dailySentCount
-        - maxDailyLimit
-        - lastUsedTimestamp
-        - status
+      required: [id, gmailUsername, dailySentCount, maxDailyLimit, lastUsedTimestamp, status]
 
     SmtpPoolResponse:
       type: object
@@ -329,10 +514,7 @@ components:
           type: integer
         totalCapacityRemaining:
           type: integer
-      required:
-        - nodes
-        - activeCount
-        - totalCapacityRemaining
+      required: [nodes, activeCount, totalCapacityRemaining]
 
     StatsResponse:
       type: object
@@ -347,9 +529,89 @@ components:
           type: integer
         successRate:
           type: number
-      required:
-        - total
-        - sent
-        - failed
-        - queued
-        - successRate
+      required: [total, sent, failed, queued, successRate]
+
+    Developer:
+      type: object
+      properties:
+        id:
+          type: string
+        apiKey:
+          type: string
+        companyName:
+          type: string
+        rateLimitPerMin:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, apiKey, companyName, rateLimitPerMin, createdAt]
+
+    DeveloperInput:
+      type: object
+      properties:
+        companyName:
+          type: string
+        rateLimitPerMin:
+          type: integer
+      required: [companyName]
+
+    DeveloperUpdate:
+      type: object
+      properties:
+        companyName:
+          type: string
+        rateLimitPerMin:
+          type: integer
+
+    Webhook:
+      type: object
+      properties:
+        id:
+          type: string
+        developerId:
+          type: string
+        url:
+          type: string
+        events:
+          type: array
+          items:
+            type: string
+        secret:
+          type: string
+        active:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+      required: [id, developerId, url, events, secret, active, createdAt]
+
+    WebhookInput:
+      type: object
+      properties:
+        url:
+          type: string
+        events:
+          type: array
+          items:
+            type: string
+            enum: [email.sent, email.failed, email.queued]
+      required: [url, events]
+
+    ListWebhooksResponse:
+      type: object
+      properties:
+        webhooks:
+          type: array
+          items:
+            $ref: "#/components/schemas/Webhook"
+      required: [webhooks]
+
+    WebhookTestResponse:
+      type: object
+      properties:
+        dispatched:
+          type: boolean
+        message:
+          type: string
+      required: [dispatched, message]

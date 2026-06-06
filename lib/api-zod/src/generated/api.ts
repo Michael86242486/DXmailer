@@ -9,7 +9,6 @@ import * as zod from 'zod';
 
 
 /**
- * Returns server health status
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({
@@ -18,19 +17,17 @@ export const HealthCheckResponse = zod.object({
 
 
 /**
- * Validates API key, queues the email for async delivery, and returns a message ID immediately.
  * @summary Queue an email for delivery
  */
 export const SendEmailBody = zod.object({
-  "to": zod.string().describe('Recipient email address'),
-  "template": zod.enum(['verification', 'otp', 'password-reset', 'magic-link', 'security-alert', 'welcome-email']).describe('Built-in template name'),
-  "senderName": zod.string().describe('Display name shown to recipient'),
-  "data": zod.record(zod.string(), zod.unknown()).optional().describe('Template variable substitutions')
+  "to": zod.string(),
+  "template": zod.enum(['verification', 'otp', 'password-reset', 'magic-link', 'security-alert', 'welcome-email']),
+  "senderName": zod.string(),
+  "data": zod.record(zod.string(), zod.unknown()).optional()
 })
 
 
 /**
- * Returns paginated email logs for the authenticated developer.
  * @summary List email delivery logs
  */
 export const listEmailLogsQueryLimitDefault = 50;
@@ -59,7 +56,7 @@ export const ListEmailLogsResponse = zod.object({
 
 
 /**
- * @summary Get a single email log by ID
+ * @summary Get a single email log
  */
 export const GetEmailLogParams = zod.object({
   "id": zod.coerce.string()
@@ -77,7 +74,6 @@ export const GetEmailLogResponse = zod.object({
 
 
 /**
- * Returns the current status of all Gmail relay nodes.
  * @summary Get SMTP pool node status
  */
 export const GetSmtpPoolResponse = zod.object({
@@ -95,7 +91,6 @@ export const GetSmtpPoolResponse = zod.object({
 
 
 /**
- * Returns aggregate delivery stats for the authenticated developer.
  * @summary Get delivery statistics
  */
 export const GetStatsResponse = zod.object({
@@ -104,6 +99,102 @@ export const GetStatsResponse = zod.object({
   "failed": zod.number(),
   "queued": zod.number(),
   "successRate": zod.number()
+})
+
+
+/**
+ * @summary Provision a new developer account
+ */
+export const CreateDeveloperBody = zod.object({
+  "companyName": zod.string(),
+  "rateLimitPerMin": zod.number().optional()
+})
+
+
+/**
+ * @summary Get current developer profile
+ */
+export const GetDeveloperMeResponse = zod.object({
+  "id": zod.string(),
+  "apiKey": zod.string(),
+  "companyName": zod.string(),
+  "rateLimitPerMin": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Update developer profile
+ */
+export const UpdateDeveloperMeBody = zod.object({
+  "companyName": zod.string().optional(),
+  "rateLimitPerMin": zod.number().optional()
+})
+
+export const UpdateDeveloperMeResponse = zod.object({
+  "id": zod.string(),
+  "apiKey": zod.string(),
+  "companyName": zod.string(),
+  "rateLimitPerMin": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary Rotate the developer API key
+ */
+export const RotateDeveloperKeyResponse = zod.object({
+  "id": zod.string(),
+  "apiKey": zod.string(),
+  "companyName": zod.string(),
+  "rateLimitPerMin": zod.number(),
+  "createdAt": zod.coerce.date()
+})
+
+
+/**
+ * @summary List registered webhooks
+ */
+export const ListWebhooksResponse = zod.object({
+  "webhooks": zod.array(zod.object({
+  "id": zod.string(),
+  "developerId": zod.string(),
+  "url": zod.string(),
+  "events": zod.array(zod.string()),
+  "secret": zod.string(),
+  "active": zod.boolean(),
+  "createdAt": zod.coerce.date()
+}))
+})
+
+
+/**
+ * @summary Register a new webhook endpoint
+ */
+export const CreateWebhookBody = zod.object({
+  "url": zod.string(),
+  "events": zod.array(zod.enum(['email.sent', 'email.failed', 'email.queued']))
+})
+
+
+/**
+ * @summary Delete a webhook endpoint
+ */
+export const DeleteWebhookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+
+/**
+ * @summary Send a test event to a webhook
+ */
+export const TestWebhookParams = zod.object({
+  "id": zod.coerce.string()
+})
+
+export const TestWebhookResponse = zod.object({
+  "dispatched": zod.boolean(),
+  "message": zod.string()
 })
 
 
